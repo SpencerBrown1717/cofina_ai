@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>cofina.AI - Intelligent CFO Automation</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #2563eb;
+            --secondary: #1e40af;
+            --accent: #3b82f6;
+            --background: #ffffff;
+            --text: #1f2937;
+            --light-text: #6b7280;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            line-height: 1.6;
+            color: var(--text);
+            background: var(--background);
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 2rem;
+        }
+
+        /* Header Styles */
+        header {
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            color: white;
+            padding: 1rem 0;
+            position: fixed;
+            width: 100%;
+            top: 0;
+            z-index: 1000;
+        }
+
+        nav {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .logo {
+            font-size: 1.5rem;
+            font-weight: 700;
+        }
+
+        .nav-links {
+            display: flex;
+            gap: 2rem;
+        }
+
+        .nav-links a {
+            color: white;
+            text-decoration: none;
+            font-weight: 500;
+        }
+
+        /* Hero Section */
+        .hero {
+            padding: 8rem 0 4rem;
+            text-align: center;
+            background: linear-gradient(135deg, #f0f9ff, #e0f2fe);
+        }
+
+        .hero h1 {
+            font-size: 3.5rem;
+            margin-bottom: 1.5rem;
+            color: var(--secondary);
+        }
+
+        .hero p {
+            font-size: 1.25rem;
+            color: var(--light-text);
+            max-width: 600px;
+            margin: 0 auto 2rem;
+        }
+
+        /* Features Section */
+        .features {
+            padding: 4rem 0;
+        }
+
+        .features-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 2rem;
+            margin-top: 3rem;
+        }
+
+        .feature-card {
+            background: white;
+            padding: 2rem;
+            border-radius: 1rem;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+            transition: transform 0.3s ease;
+        }
+
+        .feature-card:hover {
+            transform: translateY(-5px);
+        }
+
+        .feature-card h3 {
+            color: var(--primary);
+            margin-bottom: 1rem;
+        }
+
+        /* CTA Section */
+        .cta {
+            background: var(--primary);
+            color: white;
+            padding: 4rem 0;
+            text-align: center;
+        }
+
+        .cta h2 {
+            font-size: 2.5rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .button {
+            display: inline-block;
+            padding: 1rem 2rem;
+            background: white;
+            color: var(--primary);
+            text-decoration: none;
+            border-radius: 0.5rem;
+            font-weight: 600;
+            transition: transform 0.3s ease;
+        }
+
+        .button:hover {
+            transform: scale(1.05);
+        }
+
+        /* Footer */
+        footer {
+            background: var(--text);
+            color: white;
+            padding: 2rem 0;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <nav class="container">
+            <div class="logo">cofina.AI</div>
+            <div class="nav-links">
+                <a href="#features">Features</a>
+                <a href="#about">About</a>
+                <a href="#contact">Contact</a>
+            </div>
+        </nav>
+    </header>
+
+    <section class="hero">
+        <div class="container">
+            <h1>Transform Your Financial Operations with AI</h1>
+            <p>Automate your CFO tasks, gain real-time insights, and make data-driven decisions with cofina.AI's intelligent financial management platform.</p>
+            <a href="#contact" class="button">Get Started</a>
+        </div>
+    </section>
+
+    <section class="features" id="features">
+        <div class="container">
+            <h2>Powerful Features</h2>
+            <div class="features-grid">
+                <div class="feature-card">
+                    <h3>QuickBooks Integration</h3>
+                    <p>Seamlessly connect with QuickBooks to automate data synchronization and financial reporting.</p>
+                </div>
+                <div class="feature-card">
+                    <h3>AI-Powered Insights</h3>
+                    <p>Get intelligent interpretations of your financial data with our advanced AI algorithms.</p>
+                </div>
+                <div class="feature-card">
+                    <h3>Smart Dashboard</h3>
+                    <p>Monitor your financial health with an intuitive, real-time dashboard showing key metrics.</p>
+                </div>
+                <div class="feature-card">
+                    <h3>Burn Rate Monitoring</h3>
+                    <p>Receive timely warnings and alerts when you're approaching or exceeding projected burn rates.</p>
+                </div>
+                <div class="feature-card">
+                    <h3>AI Financial Assistant</h3>
+                    <p>Chat with our AI agent to get instant answers about your company's financial data.</p>
+                </div>
+                <div class="feature-card">
+                    <h3>Automated Reporting</h3>
+                    <p>Generate comprehensive financial reports automatically with customizable templates.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="cta">
+        <div class="container">
+            <h2>Ready to Transform Your Financial Operations?</h2>
+            <p>Join the future of intelligent financial management today.</p>
+            <a href="#contact" class="button">Schedule a Demo</a>
+        </div>
+    </section>
+
+    <footer>
+        <div class="container">
+            <p>&copy; 2024 cofina.AI. All rights reserved.</p>
+        </div>
+    </footer>
+</body>
+</html> 
