@@ -207,19 +207,19 @@
             position: relative;
         }
 
-        /* Cash Flow Chart - Enhanced */
+        /* Cash Flow Chart - Final Polished Version */
         .cash-flow-chart {
             height: 100%;
             width: 100%;
             position: relative;
-            padding-left: 48px; /* Increased space for y-axis */
+            padding-left: 40px;
         }
         .chart-y-axis {
             position: absolute;
             left: 0;
             top: 0;
             bottom: 30px;
-            width: 48px;
+            width: 40px;
             display: flex;
             flex-direction: column;
             justify-content: space-between;
@@ -235,7 +235,6 @@
             justify-content: space-around;
             padding-top: 10px;
             position: relative;
-            margin-left: 8px; /* Ensure bars don't touch y-axis */
         }
         .bar-group {
             display: flex;
@@ -247,6 +246,71 @@
             width: 14%;
             height: 100%;
         }
+        .bar {
+            width: 45%;
+            border-radius: 4px 4px 0 0;
+            position: relative;
+            transition: height 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            cursor: pointer;
+        }
+        .bar.income {
+            background: var(--success);
+        }
+        .bar.expense {
+            background: var(--danger);
+        }
+        .bar:hover {
+            opacity: 0.9;
+            transform: translateY(-2px);
+        }
+        .bar-tooltip {
+            position: absolute;
+            bottom: calc(100% + 10px);
+            left: 50%;
+            transform: translateX(-50%);
+            background: var(--dark);
+            color: white;
+            padding: 6px 10px;
+            border-radius: var(--radius);
+            font-size: 0.75rem;
+            white-space: nowrap;
+            z-index: 10;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.2s ease;
+            box-shadow: var(--shadow-md);
+            max-width: 120px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .bar:hover .bar-tooltip {
+            opacity: 1;
+        }
+        .bar-tooltip::after {
+            content: '';
+            position: absolute;
+            top: 100%;
+            left: 50%;
+            transform: translateX(-50%);
+            border-width: 4px;
+            border-style: solid;
+            border-color: var(--dark) transparent transparent transparent;
+        }
+        .net-dot {
+            position: absolute;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 14px;
+            height: 14px;
+            border-radius: 50%;
+            background: var(--primary-dark);
+            border: 2px solid #fff;
+            box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+            z-index: 4;
+        }
+        .net-dot.negative {
+            background: var(--danger);
+        }
         .bar-label {
             font-size: 0.75rem;
             color: var(--gray);
@@ -255,21 +319,35 @@
             text-align: center;
             z-index: 1;
         }
-        /* Tooltip fix: prevent clipping */
-        .bar-tooltip {
-            white-space: nowrap;
-            max-width: 120px;
-            overflow: hidden;
-            text-overflow: ellipsis;
+        .chart-legend {
+            display: flex;
+            justify-content: center;
+            gap: 1.5rem;
+            margin-top: 1rem;
         }
-        /* Export button: keep above chart content */
-        .export-btn {
-            z-index: 20 !important;
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-size: 0.75rem;
+            color: var(--gray);
         }
-        /* Accessibility: focus ring for export button */
-        .export-btn:focus {
-            outline: 2px solid var(--primary-dark);
-            outline-offset: 2px;
+        .legend-color {
+            width: 10px;
+            height: 10px;
+            border-radius: 2px;
+        }
+        .legend-color.income {
+            background: var(--success);
+        }
+        .legend-color.expense {
+            background: var(--danger);
+        }
+        .legend-color.net {
+            background: var(--primary-dark);
+            border-radius: 50%;
+            width: 12px;
+            height: 12px;
         }
 
         /* Burn Rate Chart */
