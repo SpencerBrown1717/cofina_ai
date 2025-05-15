@@ -281,22 +281,31 @@
         }
 
         .bar-tooltip {
-            display: none;
+            opacity: 0;
+            transition: opacity 0.2s, visibility 0.2s;
+            pointer-events: none;
+            background: var(--dark);
+            color: white;
+            padding: 8px 12px;
+            border-radius: 4px;
+            font-size: 0.85rem;
+            white-space: nowrap;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.15);
             position: absolute;
             left: 50%;
-            bottom: 110%;
+            bottom: 120%;
             transform: translateX(-50%);
-            background: var(--dark);
-            color: #fff;
-            padding: 4px 8px;
-            border-radius: 4px;
-            font-size: 0.75rem;
-            white-space: nowrap;
-            pointer-events: none;
+            z-index: 10;
+            visibility: hidden;
         }
 
         .bar:hover .bar-tooltip, .bar:focus .bar-tooltip {
-            display: block;
+            opacity: 1;
+            visibility: visible;
+        }
+
+        .bar:focus {
+            outline: 2px solid var(--primary);
         }
 
         .bar-label {
@@ -476,6 +485,46 @@
                 grid-template-columns: 1fr;
             }
         }
+
+        /* New styles for net-dot and legend-dot */
+        .net-dot {
+            background: var(--primary);
+            border: 2px solid #fff;
+            box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+        }
+        .net-dot.negative {
+            background: var(--danger);
+        }
+        .legend-dot.net {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: var(--primary);
+            display: inline-block;
+            margin-right: 4px;
+            border: 2px solid #fff;
+            box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+        }
+
+        /* Add spinner styles */
+        .chart-spinner {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 200px;
+        }
+        .spinner {
+            border: 4px solid var(--gray-light);
+            border-top: 4px solid var(--primary);
+            border-radius: 50%;
+            width: 32px;
+            height: 32px;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
     </style>
 </head>
 <body>
@@ -589,6 +638,28 @@
                 </div>
             </div>
         </main>
+    </div>
+
+    <!-- Error notification template -->
+    <div class="error-notification" id="errorNotification" aria-live="assertive" aria-atomic="true">
+        <span class="error-icon">⚠️</span>
+        <div class="error-message">An error occurred. Please try again.</div>
+        <button class="error-close" id="errorClose">×</button>
+    </div>
+    <div id="ariaLive" style="position:absolute;left:-9999px;top:auto;width:1px;height:1px;overflow:hidden;" aria-live="polite" aria-atomic="true"></div>
+
+    <button id="darkModeToggle" style="position:fixed;bottom:24px;right:24px;z-index:2000;padding:0.75rem 1.25rem;border-radius:8px;border:none;background:var(--primary);color:white;font-weight:600;box-shadow:0 2px 8px rgba(0,0,0,0.12);cursor:pointer;">🌙 Dark Mode</button>
+    <div id="onboardingModal" style="display:none;position:fixed;top:0;left:0;width:100vw;height:100vh;background:rgba(31,41,55,0.7);z-index:3000;align-items:center;justify-content:center;">
+      <div style="background:white;padding:2rem 2.5rem;border-radius:12px;max-width:400px;box-shadow:0 8px 32px rgba(0,0,0,0.18);text-align:center;">
+        <h2 style="margin-bottom:1rem;font-size:1.25rem;color:var(--primary-dark);">Welcome to Cofina.AI!</h2>
+        <ul style="text-align:left;margin-bottom:1.5rem;font-size:1rem;color:var(--dark);">
+          <li>🌗 Use <b>Dark Mode</b> for eye comfort (bottom right).</li>
+          <li>📊 <b>Export</b> your chart data as CSV (top right of each chart).</li>
+          <li>⌨️ Navigate with <b>keyboard arrows</b> and <b>Enter</b>.</li>
+          <li>💬 Ask the AI anything about your finances.</li>
+        </ul>
+        <button id="closeOnboarding" style="background:var(--primary);color:white;padding:0.5rem 1.5rem;border:none;border-radius:6px;font-weight:600;cursor:pointer;">Got it!</button>
+      </div>
     </div>
 
     <script>
@@ -746,8 +817,7 @@
             try {
                 // Validate data before rendering
                 validateData(cashFlowData);
-                validateData(burnRateData);
-                
+                // No need to validate burnRateData with cashFlowData logic
                 // Render charts
                 renderCashFlowChart('monthly');
                 renderBurnRateChart('6m');
@@ -768,49 +838,42 @@
                 `;
                 errorMessage.textContent = 'Error loading charts. Please refresh the page.';
                 document.body.appendChild(errorMessage);
-                
-                // Remove error message after 5 seconds
-                setTimeout(() => {
-                    errorMessage.remove();
-                }, 5000);
+                setTimeout(() => { errorMessage.remove(); }, 5000);
             }
         }
 
-        // Improved chart rendering with error handling
+        // Show spinner while rendering chart
+        function showChartSpinner(container) {
+            container.innerHTML = '<div class="chart-spinner"><div class="spinner"></div></div>';
+        }
+
+        // Clamp function for net dot position
+        function clamp(val, min, max) {
+            return Math.max(min, Math.min(max, val));
+        }
+
+        // Improved chart rendering with loading spinner, smooth transitions, and clamped net dot
         function renderCashFlowChart(period) {
             try {
                 const chartContainer = document.getElementById('cashFlowChart');
                 const yAxis = document.getElementById('cashFlowYAxis');
-                
-                if (!chartContainer || !yAxis) {
-                    throw new Error('Required chart elements not found');
-                }
-
-                const data = cashFlowData[period];
-                if (!data || !Array.isArray(data)) {
-                    throw new Error('Invalid data format for cash flow chart');
-                }
-
-                // Clear previous content
-                chartContainer.innerHTML = '';
-                yAxis.innerHTML = '';
-                
-                // Calculate max value for scaling
-                let max = 0;
-                data.forEach(item => {
-                    if (typeof item.income === 'number' && typeof item.expense === 'number') {
-                        max = Math.max(max, item.income, item.expense);
-                    }
-                });
-                
-                if (max === 0) {
-                    throw new Error('No valid data points found');
-                }
-                
-                max = Math.ceil(max / 10) * 10;
-
-                // Create Y-axis labels with error handling
-                try {
+                if (!chartContainer || !yAxis) throw new Error('Required chart elements not found');
+                showChartSpinner(chartContainer);
+                setTimeout(() => { // Simulate async for spinner UX
+                    const data = cashFlowData[period];
+                    if (!data || !Array.isArray(data)) throw new Error('Invalid data format for cash flow chart');
+                    chartContainer.innerHTML = '';
+                    yAxis.innerHTML = '';
+                    // Calculate max value for scaling
+                    let max = 0;
+                    data.forEach(item => {
+                        if (typeof item.income === 'number' && typeof item.expense === 'number') {
+                            max = Math.max(max, item.income, item.expense);
+                        }
+                    });
+                    if (max === 0) throw new Error('No valid data points found');
+                    max = Math.ceil(max / 10) * 10;
+                    // Create Y-axis labels
                     for (let i = 5; i >= 0; i--) {
                         const label = document.createElement('div');
                         label.className = 'chart-y-label';
@@ -818,76 +881,73 @@
                         label.textContent = `$${Math.round((max * i) / 5)}k`;
                         yAxis.appendChild(label);
                     }
-                } catch (error) {
-                    console.error('Error creating Y-axis labels:', error);
-                    throw error;
-                }
-
-                // Create chart bars with error handling
-                data.forEach((item, index) => {
-                    try {
-                        if (typeof item.income !== 'number' || typeof item.expense !== 'number') {
-                            console.warn(`Skipping invalid data point at index ${index}`);
-                            return;
-                        }
-
-                        const barGroup = document.createElement('div');
-                        barGroup.className = 'bar-group';
-                        barGroup.style.position = 'relative';
-                        
-                        // Income bar
-                        const incomeBar = document.createElement('div');
-                        incomeBar.className = 'bar income';
-                        incomeBar.setAttribute('tabindex', '0');
-                        incomeBar.style.height = '0';
-                        const incomeTooltip = document.createElement('div');
-                        incomeTooltip.className = 'bar-tooltip';
-                        incomeTooltip.textContent = `Income: $${item.income}k`;
-                        incomeBar.appendChild(incomeTooltip);
-                        
-                        // Expense bar
-                        const expenseBar = document.createElement('div');
-                        expenseBar.className = 'bar expense';
-                        expenseBar.setAttribute('tabindex', '0');
-                        expenseBar.style.height = '0';
-                        const expenseTooltip = document.createElement('div');
-                        expenseTooltip.className = 'bar-tooltip';
-                        expenseTooltip.textContent = `Expense: $${item.expense}k`;
-                        expenseBar.appendChild(expenseTooltip);
-
-                        // Net indicator
-                        const netIndicator = document.createElement('div');
-                        netIndicator.className = `net-indicator ${item.net < 0 ? 'negative' : ''}`;
-                        netIndicator.style.top = `${200 - (item.net / max) * 200}px`;
-                        
-                        // Label
-                        const label = document.createElement('div');
-                        label.className = 'bar-label';
-                        label.textContent = period === 'monthly' ? item.month : period === 'weekly' ? item.week : item.quarter;
-                        
-                        // Append elements
-                        barGroup.appendChild(incomeBar);
-                        barGroup.appendChild(expenseBar);
-                        barGroup.appendChild(netIndicator);
-                        barGroup.appendChild(label);
-                        chartContainer.appendChild(barGroup);
-
-                        // Trigger animations with error handling
-                        requestAnimationFrame(() => {
-                            try {
+                    // Create chart bars
+                    data.forEach((item, index) => {
+                        try {
+                            if (typeof item.income !== 'number' || typeof item.expense !== 'number') {
+                                console.warn(`Skipping invalid data point at index ${index}`);
+                                return;
+                            }
+                            const barGroup = document.createElement('div');
+                            barGroup.className = 'bar-group';
+                            barGroup.style.position = 'relative';
+                            // Income bar
+                            const incomeBar = document.createElement('div');
+                            incomeBar.className = 'bar income';
+                            incomeBar.setAttribute('tabindex', '0');
+                            incomeBar.setAttribute('aria-label', `Income: $${item.income}k`);
+                            incomeBar.style.height = '0';
+                            const incomeTooltip = document.createElement('div');
+                            incomeTooltip.className = 'bar-tooltip';
+                            incomeTooltip.textContent = `Income: $${item.income}k`;
+                            incomeBar.appendChild(incomeTooltip);
+                            // Expense bar
+                            const expenseBar = document.createElement('div');
+                            expenseBar.className = 'bar expense';
+                            expenseBar.setAttribute('tabindex', '0');
+                            expenseBar.setAttribute('aria-label', `Expense: $${item.expense}k`);
+                            expenseBar.style.height = '0';
+                            const expenseTooltip = document.createElement('div');
+                            expenseTooltip.className = 'bar-tooltip';
+                            expenseTooltip.textContent = `Expense: $${item.expense}k`;
+                            expenseBar.appendChild(expenseTooltip);
+                            // Net indicator as a dot
+                            const netDot = document.createElement('div');
+                            netDot.className = `net-dot${item.net < 0 ? ' negative' : ''}`;
+                            netDot.style.position = 'absolute';
+                            netDot.style.left = '50%';
+                            netDot.style.transform = 'translateX(-50%)';
+                            netDot.style.width = '12px';
+                            netDot.style.height = '12px';
+                            netDot.style.borderRadius = '50%';
+                            netDot.style.background = item.net < 0 ? 'var(--danger)' : 'var(--primary)';
+                            // Clamp net dot position
+                            const netTop = clamp(200 - (item.net / max) * 200 - 6, 0, 200 - 12);
+                            netDot.style.top = `${netTop}px`;
+                            netDot.style.zIndex = 4;
+                            netDot.title = `Net: $${item.net}k`;
+                            // Label
+                            const label = document.createElement('div');
+                            label.className = 'bar-label';
+                            label.textContent = period === 'monthly' ? item.month : period === 'weekly' ? item.week : item.quarter;
+                            // Append elements
+                            barGroup.appendChild(incomeBar);
+                            barGroup.appendChild(expenseBar);
+                            barGroup.appendChild(netDot);
+                            barGroup.appendChild(label);
+                            chartContainer.appendChild(barGroup);
+                            // Smooth fade-in for bars
+                            setTimeout(() => {
+                                incomeBar.style.transition = 'height 0.5s cubic-bezier(.4,2,.6,1)';
+                                expenseBar.style.transition = 'height 0.5s cubic-bezier(.4,2,.6,1)';
                                 incomeBar.style.height = `${(item.income / max) * 200}px`;
                                 expenseBar.style.height = `${(item.expense / max) * 200}px`;
-                            } catch (error) {
-                                console.error('Error animating bars:', error);
-                            }
-                        });
-                    } catch (error) {
-                        console.error(`Error creating bar group at index ${index}:`, error);
-                    }
-                });
-
-                // Add legend with error handling
-                try {
+                            }, 50);
+                        } catch (error) {
+                            console.error(`Error creating bar group at index ${index}:`, error);
+                        }
+                    });
+                    // Add legend
                     const legend = document.createElement('div');
                     legend.className = 'chart-legend';
                     legend.innerHTML = `
@@ -900,18 +960,14 @@
                             <span>Expense</span>
                         </div>
                         <div class="legend-item">
-                            <div class="legend-color net"></div>
+                            <div class="legend-dot net"></div>
                             <span>Net</span>
                         </div>
                     `;
                     chartContainer.appendChild(legend);
-                } catch (error) {
-                    console.error('Error creating legend:', error);
-                }
-
+                }, 300); // 300ms spinner
             } catch (error) {
                 console.error('Error rendering cash flow chart:', error);
-                // Show error message in chart container
                 chartContainer.innerHTML = `
                     <div style="
                         padding: 2rem;
@@ -1107,6 +1163,24 @@
             }
         }
 
+        // Keyboard accessibility for chart period buttons
+        document.addEventListener('DOMContentLoaded', () => {
+            document.querySelectorAll('.chart-controls').forEach(ctrl => {
+                ctrl.addEventListener('keydown', e => {
+                    if (e.key === 'ArrowRight' || e.key === 'ArrowLeft') {
+                        const btns = Array.from(ctrl.querySelectorAll('.chart-btn'));
+                        const activeIdx = btns.findIndex(b => b.classList.contains('active'));
+                        let nextIdx = activeIdx;
+                        if (e.key === 'ArrowRight') nextIdx = (activeIdx + 1) % btns.length;
+                        if (e.key === 'ArrowLeft') nextIdx = (activeIdx - 1 + btns.length) % btns.length;
+                        btns[nextIdx].focus();
+                        btns[nextIdx].click();
+                        e.preventDefault();
+                    }
+                });
+            });
+        });
+
         // Initialize everything with error handling
         try {
             addEventListeners();
@@ -1114,6 +1188,186 @@
         } catch (error) {
             console.error('Error initializing dashboard:', error);
         }
+
+        // Persist chart period selection
+        function saveChartPeriod(chart, period) {
+            localStorage.setItem(`cofina_period_${chart}`, period);
+        }
+        function getChartPeriod(chart, fallback) {
+            return localStorage.getItem(`cofina_period_${chart}`) || fallback;
+        }
+
+        // UI Manager module - handles all UI operations
+        const UIManager = {
+            // Initialize UI
+            init: function() {
+                this.setupEventListeners();
+                // Auto-focus chat input
+                if (this.elements.chatInput) {
+                    this.elements.chatInput.focus();
+                }
+                // Keyboard navigation for sidebar
+                this.setupSidebarKeyboardNav();
+            },
+            setupEventListeners: function() {
+                // Chart period buttons
+                document.querySelectorAll('.chart-btn').forEach(btn => {
+                    btn.addEventListener('click', this.handleChartPeriodChange.bind(this));
+                    // Keyboard accessibility: Enter/Space triggers click
+                    btn.addEventListener('keydown', e => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                            e.preventDefault();
+                            btn.click();
+                        }
+                    });
+                });
+                // Chat input
+                this.elements.sendButton.addEventListener('click', this.handleSendMessage.bind(this));
+                this.elements.chatInput.addEventListener('keypress', (event) => {
+                    if (event.key === 'Enter') {
+                        this.handleSendMessage();
+                    }
+                });
+                // Error notification close button
+                this.elements.errorClose.addEventListener('click', this.hideError.bind(this));
+            },
+            // Keyboard navigation for sidebar
+            setupSidebarKeyboardNav: function() {
+                const sidebarLinks = Array.from(document.querySelectorAll('.sidebar .nav-link'));
+                sidebarLinks.forEach((link, idx) => {
+                    link.setAttribute('tabindex', '0');
+                    link.addEventListener('keydown', e => {
+                        if (e.key === 'ArrowDown') {
+                            e.preventDefault();
+                            sidebarLinks[(idx + 1) % sidebarLinks.length].focus();
+                        } else if (e.key === 'ArrowUp') {
+                            e.preventDefault();
+                            sidebarLinks[(idx - 1 + sidebarLinks.length) % sidebarLinks.length].focus();
+                        } else if (e.key === 'Enter' || e.key === ' ') {
+                            e.preventDefault();
+                            link.click();
+                        }
+                    });
+                });
+            },
+            showError: function(message) {
+                this.elements.errorNotification.querySelector('.error-message').textContent = message;
+                this.elements.errorNotification.classList.add('visible');
+                // ARIA live update
+                document.getElementById('ariaLive').textContent = message;
+                // Auto-hide after 5 seconds
+                setTimeout(() => {
+                    this.hideError();
+                }, 5000);
+            },
+            hideError: function() {
+                this.elements.errorNotification.classList.remove('visible');
+            },
+            elements: {
+                errorNotification: document.getElementById('errorNotification'),
+                errorClose: document.getElementById('errorClose'),
+                chatInput: document.getElementById('chatInput'),
+                sendButton: document.getElementById('sendButton')
+            }
+        };
+
+        // Chart Manager module - handles chart rendering
+        const ChartManager = {
+            // Initialize charts
+            init: function() {
+                this.loadCashFlowChart(getChartPeriod('cashflow', 'monthly'));
+                this.loadBurnRateChart(getChartPeriod('burnrate', '6m'));
+            },
+            // Load Cash Flow Chart
+            loadCashFlowChart: function(period) {
+                saveChartPeriod('cashflow', period);
+                // ... existing code ...
+            },
+            // Load Burn Rate Chart
+            loadBurnRateChart: function(period) {
+                saveChartPeriod('burnrate', period);
+                // ... existing code ...
+            },
+            // ... existing code ...
+        };
+
+        // DARK MODE
+        (function(){
+          const root = document.documentElement;
+          const darkVars = {
+            '--primary': '#60a5fa',
+            '--primary-light': '#1e293b',
+            '--primary-dark': '#2563eb',
+            '--success': '#22d3ee',
+            '--danger': '#f87171',
+            '--warning': '#fbbf24',
+            '--dark': '#f3f4f6',
+            '--gray': '#9ca3af',
+            '--gray-light': '#374151',
+            '--light-bg': '#1e293b',
+            '--white': '#111827',
+          };
+          function setDarkMode(on) {
+            for(const k in darkVars) root.style.setProperty(k, on ? darkVars[k] : '');
+            document.body.classList.toggle('dark-mode', on);
+            localStorage.setItem('cofina_dark', on ? '1' : '0');
+            document.getElementById('darkModeToggle').textContent = on ? '☀️ Light Mode' : '🌙 Dark Mode';
+          }
+          document.getElementById('darkModeToggle').onclick = function(){
+            setDarkMode(!document.body.classList.contains('dark-mode'));
+          };
+          if(localStorage.getItem('cofina_dark')==='1' || (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches)) setDarkMode(true);
+        })();
+
+        // EXPORT TO CSV
+        function exportToCSV(data, filename) {
+          if(!data || !data.length) return;
+          const keys = Object.keys(data[0]);
+          const csv = [keys.join(',')].concat(data.map(row => keys.map(k => '"'+String(row[k]).replace(/"/g,'""')+'"').join(','))).join('\n');
+          const blob = new Blob([csv], {type:'text/csv'});
+          const a = document.createElement('a');
+          a.href = URL.createObjectURL(blob);
+          a.download = filename;
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+        }
+        // Add export buttons to chart cards
+        function addExportButtons() {
+          [
+            {card: 'cashFlowCard', getData: () => DataManager.cashFlowData[getChartPeriod('cashflow','monthly')]},
+            {card: 'burnRateCard', getData: () => DataManager.burnRateData[getChartPeriod('burnrate','6m')]}
+          ].forEach(({card,getData}) => {
+            const cardEl = document.getElementById(card);
+            if(cardEl && !cardEl.querySelector('.export-btn')) {
+              const btn = document.createElement('button');
+              btn.textContent = 'Export CSV';
+              btn.className = 'export-btn';
+              btn.style = 'position:absolute;top:18px;right:18px;background:var(--primary);color:white;padding:0.3rem 0.9rem;border:none;border-radius:6px;font-size:0.85rem;font-weight:600;cursor:pointer;z-index:10;box-shadow:0 1px 4px rgba(0,0,0,0.08);';
+              btn.onclick = () => exportToCSV(getData(), card+".csv");
+              cardEl.style.position = 'relative';
+              cardEl.appendChild(btn);
+            }
+          });
+        }
+        addExportButtons();
+        // Re-add export buttons after chart reloads
+        const origLoadCash = ChartManager.loadCashFlowChart;
+        ChartManager.loadCashFlowChart = function(period) { origLoadCash.call(ChartManager, period); setTimeout(addExportButtons, 600); };
+        const origLoadBurn = ChartManager.loadBurnRateChart;
+        ChartManager.loadBurnRateChart = function(period) { origLoadBurn.call(ChartManager, period); setTimeout(addExportButtons, 600); };
+
+        // ONBOARDING MODAL
+        (function(){
+          if(!localStorage.getItem('cofina_onboarded')) {
+            const modal = document.getElementById('onboardingModal');
+            modal.style.display = 'flex';
+            document.getElementById('closeOnboarding').onclick = function(){
+              modal.style.display = 'none';
+              localStorage.setItem('cofina_onboarded','1');
+            };
+          }
+        })();
     </script>
 </body>
 </html> 
