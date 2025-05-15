@@ -222,41 +222,81 @@
             background: var(--gray-light);
         }
 
+        .chart-y-axis {
+            position: absolute;
+            left: 0;
+            top: 20px;
+            bottom: 30px;
+            width: 40px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            z-index: 2;
+        }
+
+        .chart-y-label {
+            font-size: 0.75rem;
+            color: var(--gray);
+            text-align: right;
+        }
+
         .chart-bars {
             display: flex;
             height: 200px;
             align-items: flex-end;
             justify-content: space-between;
             padding-top: 20px;
+            position: relative;
         }
 
         .bar-group {
             display: flex;
-            flex-direction: column;
-            align-items: center;
-            width: 100%;
-        }
-
-        .bar-wrapper {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            width: 100%;
+            flex-direction: row;
+            align-items: flex-end;
+            width: 60px;
+            justify-content: center;
+            gap: 4px;
         }
 
         .bar {
             width: 20px;
-            background: var(--primary-light);
             border-radius: 4px 4px 0 0;
-            margin: 0 auto;
+            margin: 0;
+            position: relative;
+            transition: box-shadow 0.2s;
         }
 
         .bar.income {
-            background: var(--success);
+            background: #10b981;
         }
 
         .bar.expense {
-            background: var(--danger);
+            background: #ef4444;
+        }
+
+        .bar:hover, .bar:focus {
+            box-shadow: 0 4px 16px rgba(0,0,0,0.12);
+            outline: 2px solid var(--primary);
+            z-index: 3;
+        }
+
+        .bar-tooltip {
+            display: none;
+            position: absolute;
+            left: 50%;
+            bottom: 110%;
+            transform: translateX(-50%);
+            background: var(--dark);
+            color: #fff;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 0.75rem;
+            white-space: nowrap;
+            pointer-events: none;
+        }
+
+        .bar:hover .bar-tooltip, .bar:focus .bar-tooltip {
+            display: block;
         }
 
         .bar-label {
@@ -503,7 +543,8 @@
                             <button class="chart-btn" data-period="quarterly">Quarterly</button>
                         </div>
                     </div>
-                    <div class="chart-container">
+                    <div class="chart-container" style="position:relative;">
+                        <div class="chart-y-axis" id="cashFlowYAxis"></div>
                         <div class="cash-flow-chart">
                             <div class="chart-bars" id="cashFlowChart">
                                 <!-- Chart bars will be dynamically generated -->
@@ -554,22 +595,22 @@
         // Sample data for charts
         const cashFlowData = {
             monthly: [
-                { month: 'Jan', income: 120, expense: 80 },
-                { month: 'Feb', income: 140, expense: 100 },
-                { month: 'Mar', income: 100, expense: 110 },
-                { month: 'Apr', income: 130, expense: 90 },
-                { month: 'May', income: 150, expense: 95 },
-                { month: 'Jun', income: 110, expense: 85 }
+                { month: 'Jan', income: 120, expense: 80, net: 40 },
+                { month: 'Feb', income: 140, expense: 100, net: 40 },
+                { month: 'Mar', income: 100, expense: 110, net: -10 },
+                { month: 'Apr', income: 130, expense: 90, net: 40 },
+                { month: 'May', income: 150, expense: 95, net: 55 },
+                { month: 'Jun', income: 110, expense: 85, net: 25 }
             ],
             weekly: [
-                { week: 'W1', income: 30, expense: 20 },
-                { week: 'W2', income: 35, expense: 25 },
-                { week: 'W3', income: 25, expense: 28 },
-                { week: 'W4', income: 32, expense: 22 }
+                { week: 'W1', income: 30, expense: 20, net: 10 },
+                { week: 'W2', income: 35, expense: 25, net: 10 },
+                { week: 'W3', income: 25, expense: 28, net: -3 },
+                { week: 'W4', income: 32, expense: 22, net: 10 }
             ],
             quarterly: [
-                { quarter: 'Q1', income: 360, expense: 290 },
-                { quarter: 'Q2', income: 390, expense: 270 }
+                { quarter: 'Q1', income: 360, expense: 290, net: 70 },
+                { quarter: 'Q2', income: 390, expense: 270, net: 120 }
             ]
         };
 
@@ -598,103 +639,371 @@
             ]
         };
 
-        // Initialize charts
-        function initializeCharts() {
-            renderCashFlowChart('monthly');
-            renderBurnRateChart('6m');
+        // Add CSS for animations and improved chart styling
+        const style = document.createElement('style');
+        style.textContent = `
+            .bar {
+                transition: height 0.3s ease-out, box-shadow 0.2s ease;
+            }
+            
+            .bar:hover {
+                box-shadow: 0 4px 16px rgba(0,0,0,0.12);
+                outline: 2px solid var(--primary);
+                z-index: 3;
+            }
+
+            .bar-tooltip {
+                opacity: 0;
+                transition: opacity 0.2s ease;
+                pointer-events: none;
+                background: var(--dark);
+                color: white;
+                padding: 8px 12px;
+                border-radius: 4px;
+                font-size: 0.75rem;
+                white-space: nowrap;
+                box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+            }
+
+            .bar:hover .bar-tooltip {
+                opacity: 1;
+            }
+
+            .net-indicator {
+                position: absolute;
+                width: 100%;
+                height: 2px;
+                background: var(--primary);
+                transition: top 0.3s ease-out;
+            }
+
+            .net-indicator.negative {
+                background: var(--danger);
+            }
+
+            .chart-legend {
+                display: flex;
+                justify-content: center;
+                gap: 1rem;
+                margin-top: 1rem;
+                font-size: 0.75rem;
+            }
+
+            .legend-item {
+                display: flex;
+                align-items: center;
+                gap: 0.5rem;
+            }
+
+            .legend-color {
+                width: 12px;
+                height: 12px;
+                border-radius: 2px;
+            }
+
+            .legend-color.income { background: var(--success); }
+            .legend-color.expense { background: var(--danger); }
+            .legend-color.net { background: var(--primary); }
+        `;
+        document.head.appendChild(style);
+
+        // Add error handling for data loading
+        function validateData(data) {
+            if (!data || typeof data !== 'object') {
+                throw new Error('Invalid data structure');
+            }
+            
+            const requiredPeriods = ['monthly', 'weekly', 'quarterly'];
+            for (const period of requiredPeriods) {
+                if (!Array.isArray(data[period])) {
+                    throw new Error(`Missing or invalid ${period} data`);
+                }
+                
+                data[period].forEach((item, index) => {
+                    if (!item || typeof item !== 'object') {
+                        throw new Error(`Invalid item at index ${index} in ${period} data`);
+                    }
+                    
+                    const requiredFields = period === 'monthly' ? ['month', 'income', 'expense', 'net'] :
+                                        period === 'weekly' ? ['week', 'income', 'expense', 'net'] :
+                                        ['quarter', 'income', 'expense', 'net'];
+                    
+                    for (const field of requiredFields) {
+                        if (!(field in item)) {
+                            throw new Error(`Missing ${field} in ${period} data at index ${index}`);
+                        }
+                    }
+                    
+                    if (typeof item.income !== 'number' || typeof item.expense !== 'number' || typeof item.net !== 'number') {
+                        throw new Error(`Invalid numeric values in ${period} data at index ${index}`);
+                    }
+                });
+            }
         }
 
-        // Render Cash Flow Chart
-        function renderCashFlowChart(period) {
-            const chartContainer = document.getElementById('cashFlowChart');
-            const data = cashFlowData[period];
-            chartContainer.innerHTML = '';
+        // Initialize charts with error handling
+        function initializeCharts() {
+            try {
+                // Validate data before rendering
+                validateData(cashFlowData);
+                validateData(burnRateData);
+                
+                // Render charts
+                renderCashFlowChart('monthly');
+                renderBurnRateChart('6m');
+            } catch (error) {
+                console.error('Error initializing charts:', error);
+                // Show user-friendly error message
+                const errorMessage = document.createElement('div');
+                errorMessage.style.cssText = `
+                    position: fixed;
+                    top: 20px;
+                    right: 20px;
+                    background: var(--danger);
+                    color: white;
+                    padding: 1rem;
+                    border-radius: var(--radius);
+                    box-shadow: var(--shadow);
+                    z-index: 1000;
+                `;
+                errorMessage.textContent = 'Error loading charts. Please refresh the page.';
+                document.body.appendChild(errorMessage);
+                
+                // Remove error message after 5 seconds
+                setTimeout(() => {
+                    errorMessage.remove();
+                }, 5000);
+            }
+        }
 
-            data.forEach(item => {
-                const barGroup = document.createElement('div');
-                barGroup.className = 'bar-group';
+        // Improved chart rendering with error handling
+        function renderCashFlowChart(period) {
+            try {
+                const chartContainer = document.getElementById('cashFlowChart');
+                const yAxis = document.getElementById('cashFlowYAxis');
                 
-                const barWrapper = document.createElement('div');
-                barWrapper.className = 'bar-wrapper';
+                if (!chartContainer || !yAxis) {
+                    throw new Error('Required chart elements not found');
+                }
+
+                const data = cashFlowData[period];
+                if (!data || !Array.isArray(data)) {
+                    throw new Error('Invalid data format for cash flow chart');
+                }
+
+                // Clear previous content
+                chartContainer.innerHTML = '';
+                yAxis.innerHTML = '';
                 
-                const incomeBar = document.createElement('div');
-                incomeBar.className = 'bar income';
-                incomeBar.style.height = `${item.income}px`;
+                // Calculate max value for scaling
+                let max = 0;
+                data.forEach(item => {
+                    if (typeof item.income === 'number' && typeof item.expense === 'number') {
+                        max = Math.max(max, item.income, item.expense);
+                    }
+                });
                 
-                const expenseBar = document.createElement('div');
-                expenseBar.className = 'bar expense';
-                expenseBar.style.height = `${item.expense}px`;
+                if (max === 0) {
+                    throw new Error('No valid data points found');
+                }
                 
-                const label = document.createElement('div');
-                label.className = 'bar-label';
-                label.textContent = period === 'monthly' ? item.month : 
-                                  period === 'weekly' ? item.week : item.quarter;
-                
-                barWrapper.appendChild(incomeBar);
-                barWrapper.appendChild(expenseBar);
-                barGroup.appendChild(barWrapper);
-                barGroup.appendChild(label);
-                chartContainer.appendChild(barGroup);
-            });
+                max = Math.ceil(max / 10) * 10;
+
+                // Create Y-axis labels with error handling
+                try {
+                    for (let i = 5; i >= 0; i--) {
+                        const label = document.createElement('div');
+                        label.className = 'chart-y-label';
+                        label.style.height = '40px';
+                        label.textContent = `$${Math.round((max * i) / 5)}k`;
+                        yAxis.appendChild(label);
+                    }
+                } catch (error) {
+                    console.error('Error creating Y-axis labels:', error);
+                    throw error;
+                }
+
+                // Create chart bars with error handling
+                data.forEach((item, index) => {
+                    try {
+                        if (typeof item.income !== 'number' || typeof item.expense !== 'number') {
+                            console.warn(`Skipping invalid data point at index ${index}`);
+                            return;
+                        }
+
+                        const barGroup = document.createElement('div');
+                        barGroup.className = 'bar-group';
+                        barGroup.style.position = 'relative';
+                        
+                        // Income bar
+                        const incomeBar = document.createElement('div');
+                        incomeBar.className = 'bar income';
+                        incomeBar.setAttribute('tabindex', '0');
+                        incomeBar.style.height = '0';
+                        const incomeTooltip = document.createElement('div');
+                        incomeTooltip.className = 'bar-tooltip';
+                        incomeTooltip.textContent = `Income: $${item.income}k`;
+                        incomeBar.appendChild(incomeTooltip);
+                        
+                        // Expense bar
+                        const expenseBar = document.createElement('div');
+                        expenseBar.className = 'bar expense';
+                        expenseBar.setAttribute('tabindex', '0');
+                        expenseBar.style.height = '0';
+                        const expenseTooltip = document.createElement('div');
+                        expenseTooltip.className = 'bar-tooltip';
+                        expenseTooltip.textContent = `Expense: $${item.expense}k`;
+                        expenseBar.appendChild(expenseTooltip);
+
+                        // Net indicator
+                        const netIndicator = document.createElement('div');
+                        netIndicator.className = `net-indicator ${item.net < 0 ? 'negative' : ''}`;
+                        netIndicator.style.top = `${200 - (item.net / max) * 200}px`;
+                        
+                        // Label
+                        const label = document.createElement('div');
+                        label.className = 'bar-label';
+                        label.textContent = period === 'monthly' ? item.month : period === 'weekly' ? item.week : item.quarter;
+                        
+                        // Append elements
+                        barGroup.appendChild(incomeBar);
+                        barGroup.appendChild(expenseBar);
+                        barGroup.appendChild(netIndicator);
+                        barGroup.appendChild(label);
+                        chartContainer.appendChild(barGroup);
+
+                        // Trigger animations with error handling
+                        requestAnimationFrame(() => {
+                            try {
+                                incomeBar.style.height = `${(item.income / max) * 200}px`;
+                                expenseBar.style.height = `${(item.expense / max) * 200}px`;
+                            } catch (error) {
+                                console.error('Error animating bars:', error);
+                            }
+                        });
+                    } catch (error) {
+                        console.error(`Error creating bar group at index ${index}:`, error);
+                    }
+                });
+
+                // Add legend with error handling
+                try {
+                    const legend = document.createElement('div');
+                    legend.className = 'chart-legend';
+                    legend.innerHTML = `
+                        <div class="legend-item">
+                            <div class="legend-color income"></div>
+                            <span>Income</span>
+                        </div>
+                        <div class="legend-item">
+                            <div class="legend-color expense"></div>
+                            <span>Expense</span>
+                        </div>
+                        <div class="legend-item">
+                            <div class="legend-color net"></div>
+                            <span>Net</span>
+                        </div>
+                    `;
+                    chartContainer.appendChild(legend);
+                } catch (error) {
+                    console.error('Error creating legend:', error);
+                }
+
+            } catch (error) {
+                console.error('Error rendering cash flow chart:', error);
+                // Show error message in chart container
+                chartContainer.innerHTML = `
+                    <div style="
+                        padding: 2rem;
+                        text-align: center;
+                        color: var(--danger);
+                        font-size: 0.875rem;
+                    ">
+                        Error loading chart. Please try again.
+                    </div>
+                `;
+            }
         }
 
         // Render Burn Rate Chart
         function renderBurnRateChart(period) {
-            const chartContainer = document.getElementById('burnRateChart');
-            const data = burnRateData[period];
-            chartContainer.innerHTML = '';
-
-            const lineChart = document.createElement('div');
-            lineChart.className = 'line-chart';
-
-            // Add reference lines
-            [80, 60, 40].forEach((value, index) => {
-                const line = document.createElement('div');
-                line.className = 'chart-line';
-                line.style.top = `${40 + index * 60}px`;
-                
-                const label = document.createElement('span');
-                label.className = 'chart-line-label';
-                label.textContent = `$${value}k`;
-                
-                line.appendChild(label);
-                lineChart.appendChild(line);
-            });
-
-            // Add danger line
-            const dangerLine = document.createElement('div');
-            dangerLine.className = 'line danger';
-            dangerLine.style.top = '70px';
-            lineChart.appendChild(dangerLine);
-
-            // Add data points and lines
-            data.forEach((point, index) => {
-                const x = (index / (data.length - 1)) * 100;
-                const y = 200 - (point.rate * 2);
-
-                const dot = document.createElement('div');
-                dot.className = 'dot';
-                dot.style.left = `${x}%`;
-                dot.style.top = `${y}px`;
-                lineChart.appendChild(dot);
-
-                if (index < data.length - 1) {
-                    const nextPoint = data[index + 1];
-                    const nextX = ((index + 1) / (data.length - 1)) * 100;
-                    const nextY = 200 - (nextPoint.rate * 2);
-
-                    const line = document.createElement('div');
-                    line.className = 'line';
-                    line.style.left = `${x}%`;
-                    line.style.width = `${nextX - x}%`;
-                    line.style.top = `${y}px`;
-                    line.style.transform = `rotate(${Math.atan2(nextY - y, nextX - x)}rad)`;
-                    line.style.transformOrigin = 'left center';
-                    lineChart.appendChild(line);
+            try {
+                const chartContainer = document.getElementById('burnRateChart');
+                if (!chartContainer) {
+                    console.error('Burn rate chart container not found');
+                    return;
                 }
-            });
 
-            chartContainer.appendChild(lineChart);
+                const data = burnRateData[period];
+                if (!data || !Array.isArray(data)) {
+                    console.error('Invalid data format for burn rate chart');
+                    return;
+                }
+
+                chartContainer.innerHTML = '';
+
+                const lineChart = document.createElement('div');
+                lineChart.className = 'line-chart';
+
+                // Add reference lines
+                [80, 60, 40].forEach((value, index) => {
+                    const line = document.createElement('div');
+                    line.className = 'chart-line';
+                    line.style.top = `${40 + index * 60}px`;
+                    
+                    const label = document.createElement('span');
+                    label.className = 'chart-line-label';
+                    label.textContent = `$${value}k`;
+                    
+                    line.appendChild(label);
+                    lineChart.appendChild(line);
+                });
+
+                // Add danger line
+                const dangerLine = document.createElement('div');
+                dangerLine.className = 'line danger';
+                dangerLine.style.top = '70px';
+                lineChart.appendChild(dangerLine);
+
+                // Add data points and lines
+                data.forEach((point, index) => {
+                    if (typeof point.rate !== 'number') {
+                        return;
+                    }
+
+                    const x = (index / (data.length - 1)) * 100;
+                    const y = 200 - (point.rate * 2);
+
+                    const dot = document.createElement('div');
+                    dot.className = 'dot';
+                    dot.style.left = `${x}%`;
+                    dot.style.top = `${y}px`;
+                    lineChart.appendChild(dot);
+
+                    if (index < data.length - 1) {
+                        const nextPoint = data[index + 1];
+                        if (typeof nextPoint.rate !== 'number') {
+                            return;
+                        }
+
+                        const nextX = ((index + 1) / (data.length - 1)) * 100;
+                        const nextY = 200 - (nextPoint.rate * 2);
+
+                        const line = document.createElement('div');
+                        line.className = 'line';
+                        line.style.left = `${x}%`;
+                        line.style.width = `${nextX - x}%`;
+                        line.style.top = `${y}px`;
+                        line.style.transform = `rotate(${Math.atan2(nextY - y, nextX - x)}rad)`;
+                        line.style.transformOrigin = 'left center';
+                        lineChart.appendChild(line);
+                    }
+                });
+
+                chartContainer.appendChild(lineChart);
+            } catch (error) {
+                console.error('Error rendering burn rate chart:', error);
+            }
         }
 
         // Chat functionality
@@ -703,6 +1012,11 @@
         const chatMessages = document.getElementById('chatMessages');
 
         function addMessage(content, isUser = false) {
+            if (!content || typeof content !== 'string') {
+                console.error('Invalid message content');
+                return;
+            }
+
             const messageDiv = document.createElement('div');
             messageDiv.className = `message ${isUser ? 'user' : 'ai'}`;
             
@@ -717,51 +1031,89 @@
 
         function handleSendMessage() {
             const message = chatInput.value.trim();
-            if (message) {
-                addMessage(message, true);
-                chatInput.value = '';
+            if (!message) {
+                return;
+            }
+
+            // Sanitize input
+            const sanitizedMessage = message.replace(/[<>]/g, '');
+            if (sanitizedMessage !== message) {
+                console.warn('Message contained potentially unsafe characters');
+            }
+
+            addMessage(sanitizedMessage, true);
+            chatInput.value = '';
+            
+            // Simulate AI response
+            setTimeout(() => {
+                const responses = [
+                    "Based on your current financial data, I can see that your burn rate has increased by 4.3% this month. This is primarily due to increased marketing expenses and new hires.",
+                    "Your runway is currently at 3.6 months. Would you like me to suggest some cost optimization strategies?",
+                    "I notice that your cash flow has been positive for the last 3 months. Would you like to see a detailed breakdown of your income sources?",
+                    "Your QuickBooks integration shows that accounts receivable have increased by 15% this quarter. This is a positive trend."
+                ];
+                addMessage(responses[Math.floor(Math.random() * responses.length)]);
+            }, 1000);
+        }
+
+        // Add error handling for event listeners
+        function addEventListeners() {
+            try {
+                document.querySelectorAll('.chart-btn').forEach(btn => {
+                    btn.addEventListener('click', (e) => {
+                        try {
+                            const period = e.target.dataset.period;
+                            if (!period) {
+                                throw new Error('No period specified for chart button');
+                            }
+
+                            const chartType = e.target.closest('.chart-card')?.querySelector('.chart-title')?.textContent.toLowerCase();
+                            if (!chartType) {
+                                throw new Error('Could not determine chart type');
+                            }
+                            
+                            // Update active button
+                            e.target.closest('.chart-controls')?.querySelectorAll('.chart-btn').forEach(b => b.classList.remove('active'));
+                            e.target.classList.add('active');
+                            
+                            // Update chart
+                            if (chartType.includes('cash flow')) {
+                                renderCashFlowChart(period);
+                            } else if (chartType.includes('burn rate')) {
+                                renderBurnRateChart(period);
+                            }
+                        } catch (error) {
+                            console.error('Error handling chart button click:', error);
+                        }
+                    });
+                });
+
+                // Chat input handling
+                const chatInput = document.getElementById('chatInput');
+                const sendButton = document.getElementById('sendButton');
                 
-                // Simulate AI response
-                setTimeout(() => {
-                    const responses = [
-                        "Based on your current financial data, I can see that your burn rate has increased by 4.3% this month. This is primarily due to increased marketing expenses and new hires.",
-                        "Your runway is currently at 3.6 months. Would you like me to suggest some cost optimization strategies?",
-                        "I notice that your cash flow has been positive for the last 3 months. Would you like to see a detailed breakdown of your income sources?",
-                        "Your QuickBooks integration shows that accounts receivable have increased by 15% this quarter. This is a positive trend."
-                    ];
-                    addMessage(responses[Math.floor(Math.random() * responses.length)]);
-                }, 1000);
+                if (chatInput && sendButton) {
+                    sendButton.addEventListener('click', handleSendMessage);
+                    chatInput.addEventListener('keypress', (e) => {
+                        if (e.key === 'Enter') {
+                            handleSendMessage();
+                        }
+                    });
+                } else {
+                    console.error('Chat elements not found');
+                }
+            } catch (error) {
+                console.error('Error setting up event listeners:', error);
             }
         }
 
-        // Event Listeners
-        document.querySelectorAll('.chart-btn').forEach(btn => {
-            btn.addEventListener('click', (e) => {
-                const period = e.target.dataset.period;
-                const chartType = e.target.closest('.chart-card').querySelector('.chart-title').textContent.toLowerCase();
-                
-                // Update active button
-                e.target.closest('.chart-controls').querySelectorAll('.chart-btn').forEach(b => b.classList.remove('active'));
-                e.target.classList.add('active');
-                
-                // Update chart
-                if (chartType.includes('cash flow')) {
-                    renderCashFlowChart(period);
-                } else if (chartType.includes('burn rate')) {
-                    renderBurnRateChart(period);
-                }
-            });
-        });
-
-        sendButton.addEventListener('click', handleSendMessage);
-        chatInput.addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') {
-                handleSendMessage();
-            }
-        });
-
-        // Initialize the dashboard
-        initializeCharts();
+        // Initialize everything with error handling
+        try {
+            addEventListeners();
+            initializeCharts();
+        } catch (error) {
+            console.error('Error initializing dashboard:', error);
+        }
     </script>
 </body>
 </html> 
