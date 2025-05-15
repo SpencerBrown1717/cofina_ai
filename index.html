@@ -207,111 +207,69 @@
             position: relative;
         }
 
-        /* Cash Flow Chart */
+        /* Cash Flow Chart - Enhanced */
         .cash-flow-chart {
             height: 100%;
             width: 100%;
+            position: relative;
+            padding-left: 48px; /* Increased space for y-axis */
         }
-
-        .axis-line {
-            position: absolute;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            height: 1px;
-            background: var(--gray-light);
-        }
-
         .chart-y-axis {
             position: absolute;
             left: 0;
-            top: 20px;
+            top: 0;
             bottom: 30px;
-            width: 40px;
+            width: 48px;
             display: flex;
             flex-direction: column;
             justify-content: space-between;
+            padding-top: 10px;
             z-index: 2;
+            background: transparent;
+            pointer-events: none;
         }
-
-        .chart-y-label {
-            font-size: 0.75rem;
-            color: var(--gray);
-            text-align: right;
-        }
-
         .chart-bars {
             display: flex;
             height: 200px;
             align-items: flex-end;
-            justify-content: space-between;
-            padding-top: 20px;
+            justify-content: space-around;
+            padding-top: 10px;
             position: relative;
+            margin-left: 8px; /* Ensure bars don't touch y-axis */
         }
-
         .bar-group {
             display: flex;
             flex-direction: row;
             align-items: flex-end;
-            width: 60px;
             justify-content: center;
-            gap: 4px;
-        }
-
-        .bar {
-            width: 20px;
-            border-radius: 4px 4px 0 0;
-            margin: 0;
+            gap: 6px;
             position: relative;
-            transition: box-shadow 0.2s;
+            width: 14%;
+            height: 100%;
         }
-
-        .bar.income {
-            background: #10b981;
-        }
-
-        .bar.expense {
-            background: #ef4444;
-        }
-
-        .bar:hover, .bar:focus {
-            box-shadow: 0 4px 16px rgba(0,0,0,0.12);
-            outline: 2px solid var(--primary);
-            z-index: 3;
-        }
-
-        .bar-tooltip {
-            opacity: 0;
-            transition: opacity 0.2s, visibility 0.2s;
-            pointer-events: none;
-            background: var(--dark);
-            color: white;
-            padding: 8px 12px;
-            border-radius: 4px;
-            font-size: 0.85rem;
-            white-space: nowrap;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.15);
-            position: absolute;
-            left: 50%;
-            bottom: 120%;
-            transform: translateX(-50%);
-            z-index: 10;
-            visibility: hidden;
-        }
-
-        .bar:hover .bar-tooltip, .bar:focus .bar-tooltip {
-            opacity: 1;
-            visibility: visible;
-        }
-
-        .bar:focus {
-            outline: 2px solid var(--primary);
-        }
-
         .bar-label {
             font-size: 0.75rem;
             color: var(--gray);
-            margin-top: 0.5rem;
+            font-weight: 500;
+            width: 14%;
+            text-align: center;
+            z-index: 1;
+        }
+        /* Tooltip fix: prevent clipping */
+        .bar-tooltip {
+            white-space: nowrap;
+            max-width: 120px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        /* Export button: keep above chart content */
+        .export-btn {
+            z-index: 20 !important;
+        }
+        /* Accessibility: focus ring for export button */
+        .export-btn:focus {
+            outline: 2px solid var(--primary-dark);
+            outline-offset: 2px;
         }
 
         /* Burn Rate Chart */
